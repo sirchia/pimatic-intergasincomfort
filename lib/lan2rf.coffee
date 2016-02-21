@@ -1,120 +1,93 @@
 Promise = require 'bluebird'
 events = require 'events'
+http = require 'http'
 
-settled = (promise) -> Promise.settle([promise])
+#settled = (promise) -> Promise.settle([promise])
 
 class Lan2RF extends events.EventEmitter
+  @_DISPLAY_CODES: {
+    85: 'sensortest'
+    170: 'service'
+    204: 'tapwater'
+    51: 'tapwater int.'
+    240: 'boiler int.'
+    15: 'boiler ext.'
+    153: 'postrun boiler'
+    102: 'central heating'
+    0: 'opentherm'
+    255: 'buffer'
+    24: 'frost'
+    231: 'postrun ch'
+    126: 'standby'
+    37: 'central heating'
+  }
 
-  constructor: (options) ->
-#    @_lastAction = Promise.resolve()
-#    @driver.on('ready', =>
-#      @_lastDataTime = new Date().getTime()
-#      @ready = yes
-#      @emit('ready')
-#    )
-#    @driver.on('error', (error) => @emit('error', error) )
-#    @driver.on('reconnect', (error) => @emit('reconnect', error) )
-#    @driver.on('close', =>
-#      @ready = no
-#      @emit('close')
-#    )
-#    @driver.on("data", (data) =>
-#      @emit "data", data
-#    )
-#    @driver.on("line", (line) =>
-#      @emit "line", line
-#      @_onLine(line)
-#    )
-#    @driver.on("send", (data) =>
-#      @emit "send", data
-#    )
-#    @on('ready', => @setupWatchdog())
+  constructor: (connection) ->
+    @host = connection.host
+    @heaterId = connection.heaterId
 
-#  connect: (@timeout = 5*60*1000, @retries = 3) ->
-## Stop watchdog if its running and close current connection
-#    return @pendingConnect = @driver.connect(timeout, retries)
-#
-#  disconnect: ->
-#    @stopWatchdog()
-#    return @driver.disconnect()
-#
-#  setupWatchdog: ->
-#    @stopWatchdog()
-#    @_watchdogTimeout = setTimeout( (=>
-#      now = new Date().getTime()
-#      # last received data is not very old, conncection looks ok:
-#      if now - @_lastDataTime < @timeout
-#        @setupWatchdog()
-#        return
-#      # Try to send ping, if it failes, there is something wrong...
-#      @_writeCommand("PING").then( =>
-#        @setupWatchdog()
-#      ).timeout(20*1000).catch( (err) =>
-#        @emit 'reconnect', err
-#        @connect(@timeout, @retries).catch( () =>
-## Could not reconnect, so start watchdog again, to trigger next try
-#          @emit 'reconnect', err
-#          return
-#        )
-#        return
-#      )
-#    ), 20*1000)
-#
-#  stopWatchdog: ->
-#    clearTimeout(@_watchdogTimeout)
-#
-#  _onLine: (line) ->
-#    @_lastDataTime = new Date().getTime()
-#
-#    event = @protocol.decodeLine line
-#
-#    if event.debug? then @emit 'rfdebug', event.debug
-#    else if event.ackResponse? then @_handleAcknowledge event
-#    else @emit 'rf', event
-#
-#
-#  whenReady: ->
-#    unless @pendingConnect?
-#      return Promise.reject(new Error("First call connect!"))
-#    return @pendingConnect
-#
-#  enableRfDebug: ->
-#    @_writeCommand("RFDEBUG=ON")
-#
-#  enableRfuDebug: ->
-#    @_writeCommand("RFUDEBUG=ON")
-#
-#  enableQrfDebug: ->
-#    @_writeCommand("QRFDEBUG=ON")
-#
-#  encodeAndWriteEvent: (event) ->
-#    @_writeAndWait(@protocol.encodeLine(event))
-#
-#  _writeCommand: (command) ->
-#    @encodeAndWriteEvent({action: command})
-#
-#  _writeAndWait: (data) ->
-#    return @_lastAction = settled(@_lastAction).then( =>
-#      return Promise.all([@driver.write(data), @_waitForAcknowledge()])
-#      .then( ([_, result]) ->
-#        result ).timeout(5000, "operation timed out")
-#    )
-#
-#  _onAcknowledge: () =>
-#    return new Promise( (resolve) =>
-#      @_awaitingAck.push resolve
-#    )
-#
-#  _waitForAcknowledge: () =>
-#    return @_onAcknowledge().then( ( event ) =>
-#      unless event.ackResponse then throw new Error("Failed to send: " + event.name)
-#      return event.name
-#    )
-#
-#  _handleAcknowledge: (event) ->
-#    unless @_awaitingAck.length <= 0
-#      resolver = @_awaitingAck.splice(0, 1)[0]
-#      resolver(event)
+    @getDataRequest = {
+      host: @host,
+      path: "/data.json?heater=#{@heaterId}"
+    }
 
+    # start periodic updates update
+    @rescheduleUpdates connection.updateInterval
+
+  rescheduleUpdates: (updateInterval) ->
+    @updateInterval = updateInterval
+    if @_periodicUpdateTimerId?
+      clearTimeout @_periodicUpdateTimerId
+    @_periodicUpdateFromLan2RF()
+
+  updateFromLan2RF: ->
+    @_processUrlJSONAsync(@getDataRequest)
+
+  setThermostatSetPoint: (temperature, roomId) ->
+    setpointPath = "/data.json?heater=#{@heaterId}&setpoint=#{(temperature - 5) * 10}&thermostat=#{roomId}"
+    @_processUrlJSONAsync({host: @host, path: setpointPath})
+
+  _processUrlJSONAsync: (request) ->
+    return new Promise((resolve, reject) =>
+      http.get request, (res) =>
+        body = ''
+
+        res.on 'data', (chunk) =>
+          body += chunk
+
+        res.on 'end', =>
+          data = JSON.parse body
+          parsedData = @_decode data
+          @emit 'update', parsedData
+          resolve()
+
+        res.on 'error', (e) =>
+          @emit 'error', e
+          reject()
+    )
+
+  _periodicUpdateFromLan2RF: =>
+    @updateFromLan2RF()
+    @_periodicUpdateTimerId = setTimeout @_periodicUpdateFromLan2RF, @updateInterval
+
+  _decode: (data) ->
+    result = {}
+    for key, value of data
+      if key.indexOf('_lsb') > -1
+        newKey = key.slice 0, -4
+        newValue = (data[(newKey + '_msb')] * 256 + value) / 100.0
+        result[newKey] = newValue unless newValue is 327.67
+      else if key is 'displ_code'
+        result[key] = Lan2RF._DISPLAY_CODES[value] ? 'unknown'
+      else if key is 'IO'
+        result.lock_out = (value &  1) == 1
+        result.pump_active = (value &  2) == 2
+        result.tap_function_active = (value &  4) == 4
+        result.burner_active = (value &  8) == 8
+      else result[key] = value unless key.indexOf('_msb') > -1
+
+    result.error = "Error: #{result.displ_code}" if result.lock_out
+
+    return result
 
 module.exports = Lan2RF
