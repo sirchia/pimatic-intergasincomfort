@@ -19,7 +19,7 @@
     "url": "git://github.com/sirchia/pimatic-intergasincomfort.git"
   },
   "dependencies": {
-    "bluebird": "~2.9.14"
+    "bluebird": "~3.3.4"
   },
   "peerDependencies": {
     "pimatic": ">=0.8.0 <1.0.0"
