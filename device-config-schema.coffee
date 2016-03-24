@@ -30,11 +30,9 @@ module.exports = {
       comfyTemp:
         description: "The defined comfy temperature"
         type: "number"
-        default: 21
       ecoTemp:
         description: "The defined eco mode temperature"
         type: "number"
-        default: 17
       guiShowModeControl:
         description: "Show the mode buttons in the gui"
         type: "boolean"
