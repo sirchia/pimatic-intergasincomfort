@@ -2,13 +2,15 @@
   "name": "pimatic-intergasincomfort",
   "description": "Plugin to control an Intergas central heating boiler through Incomfort Lan2RF gateway.",
   "author": "Riccardo Sirchia <sirchia.r@gmail.com> (https://github.com/sirchia/pimatic-intergasincomfort)",
+  "license": "GPL-2.0",
   "main": "intergasincomfort.coffee",
   "files": [
     "lib",
     "intergasincomfort.coffee",
     "README.md",
     "intergasincomfort-config-schema.coffee",
-    "device-config-schema.coffee"
+    "device-config-schema.coffee",
+    "LICENSE.txt"
   ],
   "version": "0.1.0",
   "homepage": "http://github.com/sirchia/pimatic-intergasincomfort",
@@ -17,10 +19,10 @@
     "url": "git://github.com/sirchia/pimatic-intergasincomfort.git"
   },
   "dependencies": {
-    "bluebird": "~2.9.14"
+    "bluebird": "~3.3.4"
   },
   "peerDependencies": {
-    "pimatic": "0.8.* && >=0.8.31"
+    "pimatic": ">=0.8.0 <1.0.0"
   },
   "configSchema": "intergasincomfort-config-schema.coffee",
   "engines": {

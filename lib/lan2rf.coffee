@@ -56,14 +56,17 @@ class Lan2RF extends events.EventEmitter
           body += chunk
 
         res.on 'end', =>
-          data = JSON.parse body
-          parsedData = @_decode data
-          @emit 'update', parsedData
-          resolve()
+          try
+            data = JSON.parse body
+            parsedData = @_decode data
+            @emit 'update', parsedData
+            resolve()
+          catch error
+            reject error
 
         res.on 'error', (e) =>
           @emit 'error', e
-          reject()
+          reject e
     )
 
   _periodicUpdateFromLan2RF: =>

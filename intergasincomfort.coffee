@@ -2,12 +2,13 @@ module.exports = (env) ->
 
   Promise = env.require 'bluebird'
   Lan2RF = require './lib/lan2rf'
-  settled = (promise) -> Promise.settle([promise])
+  settled = (promise) -> promise.reflect()
 
   class IntergasIncomfort extends env.plugins.Plugin
  
     init: (app, @framework, @config) =>
       deviceConfigDef = require("./device-config-schema")
+      @_lastAction = Promise.resolve()
       @framework.deviceManager.registerDeviceClass("IntergasIncomfortHeatingThermostat", {
         configDef: deviceConfigDef.IntergasIncomfortHeatingThermostat,
         createCallback: (config, lastState) -> new IntergasIncomfortHeatingThermostat(config, lastState)
