@@ -2,7 +2,7 @@ module.exports = (env) ->
 
   Promise = env.require 'bluebird'
   Lan2RF = require './lib/lan2rf'
-  settled = (promise) -> Promise.settle([promise])
+  settled = (promise) -> promise.reflect()
 
   class IntergasIncomfort extends env.plugins.Plugin
  
