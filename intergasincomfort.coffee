@@ -8,6 +8,7 @@ module.exports = (env) ->
  
     init: (app, @framework, @config) =>
       deviceConfigDef = require("./device-config-schema")
+      @_lastAction = Promise.resolve()
       @framework.deviceManager.registerDeviceClass("IntergasIncomfortHeatingThermostat", {
         configDef: deviceConfigDef.IntergasIncomfortHeatingThermostat,
         createCallback: (config, lastState) -> new IntergasIncomfortHeatingThermostat(config, lastState)
