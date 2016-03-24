@@ -22,7 +22,7 @@
     "bluebird": "~2.9.14"
   },
   "peerDependencies": {
-    "pimatic": "0.8.* && >=0.8.31"
+    "pimatic": ">=0.8.0 <1.0.0"
   },
   "configSchema": "intergasincomfort-config-schema.coffee",
   "engines": {
