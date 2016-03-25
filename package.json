@@ -12,7 +12,7 @@
     "device-config-schema.coffee",
     "LICENSE.txt"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "homepage": "http://github.com/sirchia/pimatic-intergasincomfort",
   "repository": {
     "type": "git",
