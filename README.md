@@ -25,7 +25,9 @@ Set the `class` attribute to `IntergasIncomfortHeatingThermostat`. For example:
   "class": "IntergasIncomfortHeatingThermostat",
   "connection": {
     "host": "192.168.1.11",
-  }
+  },
+  "comfyTemp": 21,
+  "ecoTemp": 17
 }
 ```
 
