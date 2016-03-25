@@ -22,6 +22,7 @@ module.exports = (env) ->
 
     setTemperatureSetpoint: (lan2rf, value, roomId) ->
       @_lastAction = settled(@_lastAction).then( ->
+        env.logger.debug "Set requested thermostat setpoint to #{value}"
         return lan2rf.setThermostatSetPoint(value, roomId)
       )
       return @_lastAction
@@ -111,8 +112,31 @@ module.exports = (env) ->
           env.logger.debug "got update for #{@id}", data
         if data?
 #          @_setValve(data.valve)
-          @_setSynced(data["room_set_ovr_#{@roomNumber}"] is data["room_temp_set_#{@roomNumber}"])
-          @_setSetpoint(data["room_set_ovr_#{@roomNumber}"])
+          currentRoomSetpont = data["room_temp_set_#{@roomNumber}"]
+
+          if currentRoomSetpont == @_temperatureSetpoint
+            #Lan2RF setpont is the same as ours, reset any outstanding setpoint modifications
+            if @lastSetpointTime?
+              env.logger.debug "Lan2RF processed our setpoint of #{currentRoomSetpont}"
+              @lastSetpointTime = null
+          else
+            # Lan2RF setpoint differs from ours
+            if @lastSetpointTime?
+              # We had a setpoint outstanding, check the time
+              if (new Date() - @lastSetpointTime) > 300000
+                # It's been longer than 5 minutes ago, give up and accept the incoming change
+                env.logger.debug "Accepting setpoint #{currentRoomSetpont} from Lan2RF after timeout, external change?"
+                @lastSetpointTime = null
+                @_setSetpoint(currentRoomSetpont)
+              else
+                # Timeout hasn't passed yet, keep hoping our values are being processed
+                env.logger.debug "Rejecting setpoint #{currentRoomSetpont} as we are waiting for our own setpont to be processed"
+            else
+              # We did not have any outstanding setpoint change, just accept the new value
+              env.logger.debug "Accepting current room setpoint #{currentRoomSetpont} from Lan2RF"
+              @_setSetpoint(currentRoomSetpont)
+
+          @_setSynced(currentRoomSetpont == @_temperatureSetpoint)
           @_setPumpActive(data.pump_active)
           @_setTapActive(data.tap_function_active)
           @_setBurnerActive(data.burner_active)
@@ -142,8 +166,9 @@ module.exports = (env) ->
       @_setMode(mode)
 
     changeTemperatureTo: (temperatureSetpoint) ->
-      if @temperatureSetpoint is temperatureSetpoint then return
+      if @_temperatureSetpoint is temperatureSetpoint then return
       return plugin.setTemperatureSetpoint(@lan2rf, temperatureSetpoint, @roomId).then( =>
+        @lastSetpointTime = new Date()
         @_setSynced(false)
         @_setSetpoint(temperatureSetpoint)
       )
