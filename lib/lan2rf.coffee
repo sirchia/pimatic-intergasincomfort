@@ -49,7 +49,7 @@ class Lan2RF extends events.EventEmitter
 
   _processUrlJSONAsync: (request) ->
     return new Promise((resolve, reject) =>
-      http.get request, (res) =>
+      http.get(request, (res) =>
         body = ''
 
         res.on 'data', (chunk) =>
@@ -67,6 +67,11 @@ class Lan2RF extends events.EventEmitter
         res.on 'error', (e) =>
           @emit 'error', e
           reject e
+      ).on('error', (e) =>
+        console.log "Got error: #{e.message}"
+        @emit 'error', e
+        reject e
+      )
     )
 
   _periodicUpdateFromLan2RF: =>
