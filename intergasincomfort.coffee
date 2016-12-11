@@ -102,12 +102,12 @@ module.exports = (env) ->
         env.logger.debug error.stack
       )
 
-      @lan2rf.on('error', (error) =>
+      @lan2rf.on('error', @errorHandler = (error) =>
         env.logger.error "connection error for #{@id}: #{error}"
         env.logger.debug error.stack
       )
 
-      @lan2rf.on('update', (data) =>
+      @lan2rf.on('update', @updateHandler = (data) =>
         if @debug
           env.logger.debug "got update for #{@id}", data
         if data?
@@ -141,6 +141,11 @@ module.exports = (env) ->
           @_setTapActive(data.tap_function_active)
           @_setBurnerActive(data.burner_active)
       )
+      super()
+
+    destroy: () ->
+      @lan2rf.removeListener 'error', @errorHandler
+      @lan2rf.removeListener 'update', @updateHandler
       super()
 
     getPumpActive: () -> Promise.resolve(@_pumpActive)
@@ -198,17 +203,22 @@ module.exports = (env) ->
         env.logger.debug error.stack
       )
 
-      @lan2rf.on('error', (error) =>
+      @lan2rf.on('error', @errorHandler = (error) =>
         env.logger.error "connection error for #{@id}: #{error}"
         env.logger.debug error.stack
       )
 
-      @lan2rf.on('update', (data) =>
+      @lan2rf.on('update', @updateHandler = (data) =>
         if @debug
           env.logger.debug "got update for #{@id}", data
         if data?
           @_setTemperature(data['room_temp_'+@roomNumber])
       )
+      super()
+
+    destroy: () ->
+      @lan2rf.removeListener 'error', @errorHandler
+      @lan2rf.removeListener 'update', @updateHandler
       super()
 
   return plugin
