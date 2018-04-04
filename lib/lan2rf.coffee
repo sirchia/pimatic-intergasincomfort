@@ -45,7 +45,9 @@ class Lan2RF extends events.EventEmitter
 
   setThermostatSetPoint: (temperature, roomId) ->
     setpointPath = "/data.json?heater=#{@heaterId}&setpoint=#{(temperature - 5) * 10}&thermostat=#{roomId}"
-    @_processUrlJSONAsync({host: @host, path: setpointPath})
+    return @_processUrlJSONAsync({host: @host, path: setpointPath}).then( =>
+      Promise.resolve __("Incomfort gateway passed setpoint %s C to the room thermostat", temperature)
+    )
 
   _processUrlJSONAsync: (request) ->
     return new Promise((resolve, reject) =>
