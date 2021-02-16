@@ -67,16 +67,40 @@ module.exports = (env) ->
         enum: ["auto", "manu", "boost"]
       pumpActive:
         description: "Boiler pump is active"
-        type: "boolean"
+        type: "string"
       tapActive:
         description: "Hot water tap is active"
-        type: "boolean"
+        type: "string"
       burnerActive:
         description: "Burner of boiler is active"
-        type: "boolean"
+        type: "string"
       synced:
         description: "Pimatic and thermostat in sync"
         type: "boolean"
+      heaterStatus:
+        description: "Central Heater status"
+        type: "string"
+        discrete: true
+      waterPressure:
+        description: "Central Heater pressure"
+        type: "number"
+        discrete: true
+        unit: "bar"
+      heaterTemperature:
+        description: "Central Heater temperature"
+        type: "number"
+        discrete: true
+        unit: "°C"
+      tapTemperature:
+        description: "Tap water temperature"
+        type: "number"
+        discrete: true
+        unit: "°C"
+      signalStrength:
+        description: "RF Signal Strength"
+        type: "number"
+        discrete: true
+        unit: "%"
 
 
     constructor: (@config, lastState) ->
@@ -85,7 +109,11 @@ module.exports = (env) ->
       @debug = @config.connection.debug
       @roomNumber = @config.connection.roomId + 1
       @_mode = lastState?.mode?.value or "auto"
-
+      
+      @_stateToString = {
+        true: "Aan"
+        false: "Uit"
+      }
       # Promise that is resolved when the connection is established
       @_lastAction = new Promise( (resolve, reject) =>
         @lan2rf = plugin.getLan2Rf(@config.connection)
@@ -140,6 +168,11 @@ module.exports = (env) ->
           @_setPumpActive(data.pump_active)
           @_setTapActive(data.tap_function_active)
           @_setBurnerActive(data.burner_active)
+          @_setHeaterStatus(data.displ_code)
+          @_setWaterPressure(data.ch_pressure)
+          @_setHeaterTemperature(data.ch_temp)
+          @_setTapTemperature(data.tap_temp)
+          @_setSignalStrength(data.rf_message_rssi)
       )
       super()
 
@@ -151,21 +184,51 @@ module.exports = (env) ->
     getPumpActive: () -> Promise.resolve(@_pumpActive)
     getTapActive: () -> Promise.resolve(@_tapActive)
     getBurnerActive: () -> Promise.resolve(@_burnerActive)
+    getHeaterStatus: () -> Promise.resolve(@_heaterStatus)
+    getWaterPressure: () -> Promise.resolve(@_waterPressure)
+    getHeaterTemperature: () -> Promise.resolve(@_heaterTemperature)
+    getTapTemperature: () -> Promise.resolve(@_tapTemperature)
+    getSignalStrength: () -> Promise.resolve(@_signalStrength)
 
     _setPumpActive: (pumpActive) ->
       if pumpActive is @_pumpActive then return
-      @_pumpActive = pumpActive
+      @_pumpActive = @_stateToString[pumpActive]
       @emit "pumpActive", @_pumpActive
 
     _setTapActive: (tapActive) ->
       if tapActive is @_tapActive then return
-      @_tapActive = tapActive
+      @_tapActive = @_stateToString[tapActive]
       @emit "tapActive", @_tapActive
 
     _setBurnerActive: (burnerActive) ->
       if burnerActive is @_burnerActive then return
-      @_burnerActive = burnerActive
+      @_burnerActive = @_stateToString[burnerActive]
       @emit "burnerActive", @_burnerActive
+
+    _setHeaterStatus: (heaterStatus) ->
+      if heaterStatus is @_heaterStatus then return
+      @_heaterStatus = heaterStatus
+      @emit "heaterStatus", @_heaterStatus
+
+    _setWaterPressure: (waterPressure) ->
+      if waterPressure is @_waterPressure then return
+      @_waterPressure = waterPressure
+      @emit "waterPressure", @_waterPressure
+
+    _setHeaterTemperature: (heaterTemperature) ->
+      if heaterTemperature is @_heaterTemperature then return
+      @_heaterTemperature = heaterTemperature
+      @emit "heaterTemperature", @_heaterTemperature
+
+    _setTapTemperature: (tapTemperature) ->
+      if tapTemperature is @_tapTemperature then return
+      @_tapTemperature = tapTemperature
+      @emit "tapTemperature", @_tapTemperature
+
+    _setSignalStrength: (signalStrength) ->
+      if signalStrength is @_signalStrength then return
+      @_signalStrength = signalStrength
+      @emit "signalStrength", @_signalStrength
 
     changeModeTo: (mode) ->
       @_setMode(mode)
