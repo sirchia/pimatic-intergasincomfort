@@ -6,20 +6,20 @@ http = require 'http'
 
 class Lan2RF extends events.EventEmitter
   @_DISPLAY_CODES: {
-    85: 'sensortest'
-    170: 'service'
-    204: 'tapwater'
-    51: 'tapwater int.'
-    240: 'boiler int.'
-    15: 'boiler ext.'
-    153: 'postrun boiler'
-    102: 'central heating'
-    0: 'opentherm'
-    255: 'buffer'
-    24: 'frost'
-    231: 'postrun ch'
-    126: 'standby'
-    37: 'central heating'
+    85: 'Zelftest'
+    170: 'Service'
+    204: 'Warmwater'
+    51: 'Warmwater int.'
+    240: 'Boiler int.'
+    15: 'Boiler ext.'
+    153: 'Nadraaien boiler'
+    102: 'CV'
+    0: 'Opentherm'
+    255: 'Buffer'
+    24: 'Vorst'
+    231: 'Nadraaien CV'
+    126: 'Gereed'
+    37: 'CV RF'
   }
 
   constructor: (connection) ->
@@ -45,7 +45,9 @@ class Lan2RF extends events.EventEmitter
 
   setThermostatSetPoint: (temperature, roomId) ->
     setpointPath = "/data.json?heater=#{@heaterId}&setpoint=#{(temperature - 5) * 10}&thermostat=#{roomId}"
-    @_processUrlJSONAsync({host: @host, path: setpointPath})
+    return @_processUrlJSONAsync({host: @host, path: setpointPath}).then( =>
+      Promise.resolve __("Incomfort gateway passed setpoint %s C to the room thermostat", temperature)
+    )
 
   _processUrlJSONAsync: (request) ->
     return new Promise((resolve, reject) =>
@@ -93,9 +95,11 @@ class Lan2RF extends events.EventEmitter
         result.tap_function_active = (value &  4) == 4
         result.burner_active = (value &  8) == 8
       else result[key] = value unless key.indexOf('_msb') > -1
-
-    result.error = "Error: #{result.displ_code}" if result.lock_out
-
+    if result.lock_out
+      result.error = "Error: #{result.displ_code}"
+      result.displ_code = "Error: #{data.displ_code}"
+    
+    #console.log(result)
     return result
 
 module.exports = Lan2RF
